@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Mapa de Densidad SameDay (zipcodes)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://librekcesar.github.io/busca_zipcodes4/leaflet-search-master/leaflet-search-master/src/leaflet-search.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100%; height: 900px; box-shadow: 5px 5px 5px #888; }
+
+        #map-title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            z-index: 1000;
+            border: 1px solid black;
+        }
+
+        #map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            line-height: 1.5em;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+            width: 250px;
+        }
+
+        #legend-toggle { cursor: pointer; margin-bottom: 5px; font-weight: bold; }
+        #toggle-icon { float: right; }
+        .legend-circle { width: 12px; height: 12px; display: inline-block; border-radius: 50%; border: 1px solid #000; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="map-title">Densidad de entregas por código postal para expansión de SameDay</div>
+    <div id="map"></div>
+
+    <div id="map-legend">
+        <div id="legend-toggle">Simbología <span id="toggle-icon">▼</span></div>
+        <div id="legend-content">
+            <strong>Estaciones Monterrey</strong><br>
+            <div><span class="legend-circle" style="background-color: #84e80d;"></span> SPMTY1</div>
+            <div><span class="legend-circle" style="background-color: #d8180c;"></span> SPMTY2</div>
+            <div><span class="legend-circle" style="background-color: #1f80c8;"></span> SPMTY3</div>
+            
+            
+            <hr>
+            <strong>Densidad (Paquetes/km²)</strong><br>
+            <div><span class="legend-circle" style="background-color: #900404;"></span> 0 - 1 (Baja)</div>
+            <div><span class="legend-circle" style="background-color: #cb5d03;"></span> 1 - 10</div>
+            <div><span class="legend-circle" style="background-color: #bea007;"></span> 10 - 25</div>
+            <div><span class="legend-circle" style="background-color: #ecf019;"></span> 25 - 50</div>
+            <div><span class="legend-circle" style="background-color: #92d806;"></span> 50 - 100</div>
+            <div><span class="legend-circle" style="background-color: #06950f;"></span> 100 - 150</div>
+            <div><span class="legend-circle" style="background-color: #036407;"></span> 150 - 256 (Alta)</div>
+            <hr>
+            <strong>Tiempo de traslado desde estación</strong>
+            <div><span class="legend-circle" style="background-color: #41bc08;"></span> Menor a 15 min</div>
+            <div><span class="legend-circle" style="background-color: #e4dd05;"></span> Mayor a 15 y menor a 25 min</div>
+            <div><span class="legend-circle" style="background-color: #df0707;"></span> Mayor a 25 min</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.3.0/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.1.0/chroma.min.js"></script>
+    <script src="https://librekcesar.github.io/busca_zipcodes4/leaflet-search-master/leaflet-search-master/src/leaflet-search.js"></script>
+
+    <script src="etsaciones_copia.js"></script>
+    <script src="state_Jalisco_copia.js"></script>
+    <script src="state_Jalisco_copi2.js"></script>
+    <script src="state_Jalisco_copia3.js"></script>
+    
+
+    <script>
+        // Inicialización del Mapa
+        var map = L.map("map").setView([20.6094, -103.36792], 11);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+
+        //////////////////////////capa puntos:
+        /////capa de puntos
+  var centroLayer = L.geoJSON(puntos, {
+            pointToLayer: function (feature, latlng) {
+                return L.circleMarker(latlng, {
+                    radius: 6,
+                    fillColor: "blue",
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+            },
+            onEachFeature: function (feature, layer) {
+                if (feature.properties) {
+                    layer.bindPopup("Dirección: " + feature.properties.direccion);
+                }
+            }
+        }).addTo(map);
+////fin de capa de puntos
+        
+
+        // --- CAPA 1: COBERTURA POR ESTACIÓN ---
+        function getColorStation(s) {
+            var stations = {
+                'SPMTY1': '#84e80d', 'SPMTY2': '#d8180c', 'SPMTY3': '#1f80c8'
+                
+            };
+            return stations[s] || '#gray';
+        }
+
+        var layerGroup = L.geoJSON(mty1, {
+            style: function(f) {
+                return { fillColor: getColorStation(f.properties.station_code), weight: 1, color: 'black', fillOpacity: 0.4 };
+            },
+            onEachFeature: function(f, l) {
+                l.bindPopup("Estación: " + f.properties.station_code);
+            }
+        }).addTo(map);
+
+        // --- CAPA 2: DENSIDAD (CLASIFICACIÓN MANUAL + BUSCADOR) ---
+        
+        // Función para asignar colores manuales exactos
+        function getColorDensidad(d) {
+            return d > 150  ? '#036407' :
+                   d > 100  ? '#06950f' :
+                   d > 50  ? '#92d806' :
+                   d > 25   ? '#ecf019' :
+                   d > 10   ? '#bea007' :
+                   d > 1   ? '#cb5d03' :
+                             '#900404';
+        }
+
+        // PRE-PROCESAMIENTO: Creamos la propiedad de búsqueda para el rango
+        mty2.features.forEach(function(feature) {
+            var d = feature.properties.densi_poli;
+            var label = "";
+            if (d > 150) label = "Intervalo 7: mayor a 150";
+            else if (d > 100) label = "Intervalo 6: 100-150";
+            else if (d > 50) label = "Intervalo 5: 50-100";
+            else if (d > 25)  label = "Intervalo 4: 25-50";
+            else if (d > 10)  label = "Intervalo 3: 10-25";
+            else if (d > 1)  label = "Intervalo 2: 1-10";
+            else label = "Intervalo 1: 0-1";
+            
+            // Agregamos ambas opciones para que el usuario busque como prefiera
+            feature.properties.search_key = label + " | Zona: " + feature.properties.zonificacion;
+        });
+
+        var layerGroup2 = L.geoJSON(mty2, {
+            style: function(f) {
+                return { fillColor: getColorDensidad(f.properties.densi_poli), weight: 1.5, color: 'white', fillOpacity: 0.7 };
+            },
+            onEachFeature: function(f, l) {
+                l.bindPopup('<b>Estación:</b> ' + f.properties.station_code + 
+                           '<br><b>Densidad:</b> ' + f.properties.densi_poli + ' paq/km²' +
+                           '<br><b>Conteo por código postal:</b> ' + f.properties.entregas_polig +
+                           '<br><b>Zonificación:</b> ' + f.properties.zonificacion + 
+                           '<br><b>Código postal:</b> ' + f.properties.zipcode);
+            }
+        });
+
+      // --- CAPA 3: DENSIDAD (CLASIFICACIÓN MANUAL + BUSCADOR) ---
+
+// Función para asignar colores manuales exactos
+         function getColortime(tiempo_des) {
+            switch (tiempo_des) {
+                case 'Menor 15 min': return '#2cee0eef';
+                case '> 15 y < 25 min': return '#e4dd05';
+                case '> 25 min': return '#df0707';
+
+                default: return 'black';
+            }
+        }
+
+        
+
+        var layerGroup3 = L.geoJSON(mty3, {
+            style: function(f) {
+                return { fillColor: getColortime(f.properties.tiempo_des), weight: 1.5, color: 'white', fillOpacity: 0.7 };
+            },
+            onEachFeature: function(f, l) {
+                l.bindPopup('<b>Estación:</b> ' + f.properties.station_code + 
+                           '<br><b>Densidad:</b> ' + f.properties.densi_poli + ' paq/km²' +
+                           '<br><b>Conteo por código postal:</b> ' + f.properties.entregas_polig + 
+                           '<br><b>Zonificación:</b> ' + f.properties.zonificacion + 
+                           '<br><b>Código postal:</b> ' + f.properties.zipcode);
+            }
+        });
+
+
+
+
+       
+
+
+        // --- CONTROLES DE CAPA ---
+        var overlayMaps = {
+            "Ubicación de estación": centroLayer,
+            "División de estaciones": layerGroup,
+            "Densidad de entregas (paq/km2)": layerGroup2,
+            "Tiempo de desplazamiento": layerGroup3
+            
+        };
+        L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
+        layerGroup2.addTo(map); // Añadida por defecto
+
+        // --- CONFIGURACIÓN DEL BUSCADOR ---
+        
+        var searchControl = new L.Control.Search({
+            layer: layerGroup2,
+            propertyName: 'search_key', // Atributo pre-procesado
+            marker: false,
+            initial: false, // Permite buscar en cualquier parte del texto
+            textPlaceholder: "Busca Rango (Ej: 1-4) o Zona...",
+            moveToLocation: function(latlng, title, map) {
+                map.setView(latlng, 12);
+            }
+        });
+
+        searchControl.on('search:locationfound', function(e) {
+            e.layer.setStyle({ fillOpacity: 1, color: '#0aecdb', weight: 4 });
+            if(e.layer._popup) e.layer.openPopup();
+        }).on('search:collapsed', function(e) {
+            layerGroup2.eachLayer(function(layer) {
+                layerGroup2.resetStyle(layer);
+            });
+        });
+
+        map.addControl(searchControl);
+
+        // --- LÓGICA DE LEYENDA COLAPSABLE ---
+        var legendToggle = document.getElementById('legend-toggle');
+        var legendContent = document.getElementById('legend-content');
+        var toggleIcon = document.getElementById('toggle-icon');
+        var isCollapsed = false;
+
+        legendToggle.addEventListener('click', function() {
+            isCollapsed = !isCollapsed;
+            legendContent.style.display = isCollapsed ? 'none' : 'block';
+            toggleIcon.textContent = isCollapsed ? '▶' : '▼';
+        });
+
+    </script>
+</body>
+</html>

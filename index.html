@@ -50,7 +50,7 @@
 </head>
 <body>
 
-    <div id="map-title">Densidad de entregas por código postal para expansión de SameDay</div>
+    <div id="map-title">Cantidad de entregas por código postal para expansión de SameDay</div>
     <div id="map"></div>
 
     <div id="map-legend">
@@ -59,8 +59,9 @@
             <strong>Estaciones Guadalajara</strong><br>
             <div><span class="legend-circle" style="background-color: #84e80d;"></span> SPGDL1</div>
             <div><span class="legend-circle" style="background-color: #d8180c;"></span> SPGDL2</div>
-            <div><span class="legend-circle" style="background-color: #1f80c8;"></span> SPGDL3</div>
-            <div><span class="legend-circle" style="background-color: #77c814;"></span> SPGDL4</div>
+            <div><span class="legend-circle" style="background-color: #2c0bb1;"></span> SPGDL3</div>
+            <div><span class="legend-circle" style="background-color: #1486c8;"></span> SPGDL4</div>
+
             
             
             <hr>
@@ -88,6 +89,7 @@
     <script src="state_Jalisco_copia.js"></script>
     <script src="state_Jalisco_copi2.js"></script>
     <script src="state_Jalisco_copia3.js"></script>
+    <script src="sameday_gdl_copia.js"></script>
     
 
     <script>
@@ -123,7 +125,7 @@
         // --- CAPA 1: COBERTURA POR ESTACIÓN ---
         function getColorStation(s) {
             var stations = {
-                'SPGDL1': '#84e80d', 'SPGDL2': '#d8180c', 'SPGDL3': '#1f80c8', 'SPGDL4': '#77c814'
+                'SPGDL1': '#84e80d', 'SPGDL2': '#d8180c', 'SPGDL3': '#2c0bb1', 'SPGDL4': '#1486c8'
                 
             };
             return stations[s] || '#gray';
@@ -132,6 +134,27 @@
         var layerGroup = L.geoJSON(mty1, {
             style: function(f) {
                 return { fillColor: getColorStation(f.properties.station_code), weight: 1, color: 'black', fillOpacity: 0.4 };
+            },
+            onEachFeature: function(f, l) {
+                l.bindPopup("Estación: " + f.properties.station_code);
+            }
+        }).addTo(map);
+
+
+        //CPS ADICIONALES: 
+
+        
+        function getColorStation2(s) {
+            var stations = {
+                'SI': '#1486c8', 'NO': '#1486c8' 
+                
+            };
+            return stations[s] || '#gray';
+        }
+
+        var layerGroup5 = L.geoJSON(sameday, {
+            style: function(f) {
+                return { fillColor: getColorStation2(f.properties.decision), weight: 1, color: 'black', fillOpacity: 0.4 };
             },
             onEachFeature: function(f, l) {
                 l.bindPopup("Estación: " + f.properties.station_code);
@@ -219,7 +242,8 @@
             "Ubicación de estación": centroLayer,
             "División de estaciones": layerGroup,
             "Densidad de entregas (paq/km2)": layerGroup2,
-            "Tiempo de desplazamiento": layerGroup3
+            "Tiempo de desplazamiento": layerGroup3,
+            "Códigos postales para SameDay":layerGroup5,
             
         };
         L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
@@ -263,6 +287,4 @@
 
     </script>
 </body>
-
 </html>
-
